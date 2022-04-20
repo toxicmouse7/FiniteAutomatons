@@ -123,7 +123,9 @@ public class NondeterministicFiniteAutomaton
         var newStates = new Dictionary<string, Dictionary<string, string>>();
         var newFinalStates = new List<string>();
 
-        consideredVertices.Enqueue(e_BFS(_currentStates.First()).ToList());
+        var startVertices = e_BFS(_currentStates.First()).ToList();
+        consideredVertices.Enqueue(startVertices);
+        used.Add(startVertices);
 
         var newInitialState = string.Join(" ", consideredVertices.First());
 
@@ -136,6 +138,7 @@ public class NondeterministicFiniteAutomaton
             }
 
             var questionVertex = string.Join(" ", q);
+            
 
             foreach (var symbol in _alphabet)
             {

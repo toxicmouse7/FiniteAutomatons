@@ -2,7 +2,7 @@
 
 // 01110 - fail
 // 0000010000 - fail
-var machine = new NondeterministicFiniteAutomaton(@"/Users/aleksejgladkov/RiderProjects/FiniteAutomatons/test.txt");
+var machine = new NondeterministicFiniteAutomaton(@"C:\Users\Aleksej\RiderProjects\FiniteAutomatons\test.txt");
 var detMachine = machine.ToDetFinAut();
 
 for (var i = 0; i < 1024; ++i)
@@ -22,3 +22,5 @@ for (var i = 0; i < 1024; ++i)
         break;
     }
 }
+
+Console.WriteLine(true);
