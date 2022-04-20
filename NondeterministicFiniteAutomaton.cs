@@ -162,6 +162,7 @@ namespace FiniteAutomatons
 
                     d[questionVertex][symbol] = d[questionVertex][symbol].Distinct().OrderBy(t => t).ToList();
                     
+                    // плохо
                     if (used.Any(l => d[questionVertex][symbol].SequenceEqual(l))) continue;
 
                     consideredVertices.Enqueue(d[questionVertex][symbol]);
