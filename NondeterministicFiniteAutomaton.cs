@@ -5,10 +5,6 @@ namespace FiniteAutomatons;
 
 public class NondeterministicFiniteAutomaton
 {
-    
-
-
-
     private readonly Dictionary<string, Dictionary<string, List<string>>> _states = new();
 
     private readonly List<string> _finalStates = new();
