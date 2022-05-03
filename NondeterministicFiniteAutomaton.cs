@@ -1,15 +1,19 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 
 namespace FiniteAutomatons;
 
 public class NondeterministicFiniteAutomaton
 {
+    
+
+
+
     private readonly Dictionary<string, Dictionary<string, List<string>>> _states = new();
 
     private readonly List<string> _finalStates = new();
     private readonly string[] _alphabet;
     private HashSet<string> _currentStates = new();
-
 
     public NondeterministicFiniteAutomaton(string filename)
     {
@@ -67,13 +71,20 @@ public class NondeterministicFiniteAutomaton
         foreach (var allowedState in allowedStates) _finalStates.Add(allowedState.Substring(1));
     }
 
+    public static NondeterministicFiniteAutomaton FromRegularExpression(string regex)
+    {
+        var tokens = Tokenizer.GetPostfixTokens(regex);
+
+        return new NondeterministicFiniteAutomaton("123");
+    }
+
     private IEnumerable<string> e_BFS(string start, bool includeFirst = true)
     {
         var q = new Queue<string>();
         q.Enqueue(start);
         var used = new List<string>();
         if (includeFirst) used.Add(start);
-        
+
         while (q.Any())
         {
             var v = q.Dequeue();
@@ -138,7 +149,6 @@ public class NondeterministicFiniteAutomaton
             }
 
             var questionVertex = string.Join(" ", q);
-            
 
             foreach (var symbol in _alphabet)
             {
@@ -160,11 +170,11 @@ public class NondeterministicFiniteAutomaton
 
                     d[questionVertex][symbol].AddRange(eClosure);
                 }
-                
+
                 if (!d[questionVertex][symbol].Any()) continue;
 
                 d[questionVertex][symbol] = d[questionVertex][symbol].Distinct().OrderBy(t => t).ToList();
-                
+
                 // плохо
                 if (used.Any(l => d[questionVertex][symbol].SequenceEqual(l))) continue;
 
