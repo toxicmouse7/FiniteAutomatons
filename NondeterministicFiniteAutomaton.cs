@@ -92,68 +92,118 @@ public class NondeterministicFiniteAutomaton
             switch (token.Type)
             {
                 case Tokenizer.Token.TokenType.Union:
-                    break;
-                case Tokenizer.Token.TokenType.Concatenation:
-                    if (token.Expression?.Length > 1)
-                    {
-                        var states = new Dictionary<string, Dictionary<string, List<string>>>();
-                        var currentStates = new HashSet<string>
-                        {
-                            count.ToString()
-                        };
-                        foreach (var symbol in token.Expression)
-                        {
-                            states[count.ToString()] = new Dictionary<string, List<string>>
-                            {
-                                [symbol.ToString()] = new() {count++.ToString()}
-                            };
-                        }
+                {
+                    var secondArgument = automatons.Pop();
+                    var firstArgument = automatons.Pop();
 
-                        var finalStates = new List<string>()
-                        {
-                            count.ToString()
-                        };
-                        automatons.Push(
-                            new NondeterministicFiniteAutomaton(
-                                states, finalStates, Array.Empty<string>(), currentStates
-                            )
-                        );
-                    }
-                    else
+                    var currentStates = new HashSet<string>() {count.ToString()};
+                    var states = new Dictionary<string, Dictionary<string, List<string>>>
                     {
-                        var states = new Dictionary<string, Dictionary<string, List<string>>>();
-                        var currentStates = new HashSet<string>
+                        [count.ToString()] = new()
+                        {
+                            ["e"] = new List<string>()
+                        }
+                    };
+
+                    states[count.ToString()]["e"].AddRange(firstArgument._currentStates);
+                    states[count++.ToString()]["e"].AddRange(secondArgument._currentStates);
+
+                    firstArgument._states[firstArgument._finalStates.First()] = new Dictionary<string, List<string>>
+                    {
+                        ["e"] = new()
                         {
                             count.ToString()
-                        };
+                        }
+                    };
+
+                    secondArgument._states[secondArgument._finalStates.First()] = new Dictionary<string, List<string>>
+                    {
+                        ["e"] = new()
+                        {
+                            count.ToString()
+                        }
+                    };
+
+                    firstArgument._states.ToList().ForEach(x => states.Add(x.Key, x.Value));
+                    secondArgument._states.ToList().ForEach(x => states.Add(x.Key, x.Value));
+
+                    var finalStates = new List<string>
+                    {
+                        count++.ToString()
+                    };
+
+                    automatons.Push(
+                        new NondeterministicFiniteAutomaton(
+                            states, finalStates, ArraySegment<string>.Empty, currentStates
+                        )
+                    );
+
+                    break;
+                }
+                case Tokenizer.Token.TokenType.Concatenation:
+                {
+                    var currentStates = new HashSet<string> {count.ToString()};
+                    var states = new Dictionary<string, Dictionary<string, List<string>>>();
+                    foreach (var symbol in token.Expression!.Select(character => character.ToString()))
+                    {
                         states[count.ToString()] = new Dictionary<string, List<string>>
                         {
-                            [token.Expression ?? throw new InvalidOperationException()] = new()
+                            [symbol] = new()
                             {
-                                count++.ToString()
+                                (++count).ToString()
                             }
                         };
-
-                        var finalStates = new List<string>
-                        {
-                            count.ToString()
-                        };
-                        automatons.Push(
-                            new NondeterministicFiniteAutomaton(
-                                states, finalStates, Array.Empty<string>(), currentStates
-                            )
-                        );
                     }
 
+                    var finalStates = new List<string> {count++.ToString()};
+                    automatons.Push(
+                        new NondeterministicFiniteAutomaton(
+                            states, finalStates, ArraySegment<string>.Empty, currentStates
+                        )
+                    );
                     break;
+                }
                 case Tokenizer.Token.TokenType.KleeneStar:
+                {
+                    var argument = automatons.Pop();
+                    var currentStates = new HashSet<string> {count.ToString()};
+                    var states = new Dictionary<string, Dictionary<string, List<string>>>
+                    {
+                        [count.ToString()] = new()
+                        {
+                            ["e"] = new List<string>()
+                        }
+                    };
+
+                    states[count.ToString()]["e"].AddRange(argument._currentStates);
+                    states[count.ToString()]["e"].Add((++count).ToString());
+                    argument._states[argument._finalStates.First()] = new Dictionary<string, List<string>>
+                    {
+                        ["e"] = new()
+                        {
+                            argument._currentStates.First(),
+                            count.ToString()
+                        }
+                    };
+                    
+                    argument._states.ToList().ForEach(x => states.Add(x.Key, x.Value));
+
+                    var finalStates = new List<string> {count++.ToString()};
+
+                    automatons.Push(
+                        new NondeterministicFiniteAutomaton(
+                            states, finalStates, ArraySegment<string>.Empty, currentStates
+                        )
+                    );
+
                     break;
+                }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(regex));
             }
         }
 
-        return new NondeterministicFiniteAutomaton("123");
+        return automatons.Peek();
     }
 
     private IEnumerable<string> e_BFS(string start, bool includeFirst = true)

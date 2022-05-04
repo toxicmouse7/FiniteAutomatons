@@ -30,13 +30,20 @@ public static class Tokenizer
             var st = expr[i..].Select((x, j) => new {Val = x, Idx = j})
                 .Where(x => OperatorsString.Contains(x.Val))
                 .Select(x => x.Idx)
-                .FirstOrDefault();
-
-
-            if (st == 0)
+                .DefaultIfEmpty(-1)
+                .First();
+            
+            if (st == -1)
             {
-                ++st;
+                tokens.Add(new Token()
+                {
+                    Type = Token.TokenType.Concatenation,
+                    Expression = expr[i..]
+                });
+                break;
             }
+
+            if (st == 0) ++st;
 
             tokens.Add(new Token()
             {
