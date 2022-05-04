@@ -36,6 +36,10 @@ public class NondeterministicFiniteAutomaton
             _states[state] = new Dictionary<string, List<string>>();
 
             var allowedTransitionsString = allowedTransitionsRegex.Match(lines[i]).Groups["transitions"].Value;
+            if (allowedTransitionsString == "")
+            {
+                continue;
+            }
             var allowedTransitions = replaceCommaRegex.Replace(allowedTransitionsString, "];")
                 .Split(';');
             foreach (var transition in allowedTransitions)
@@ -67,9 +71,86 @@ public class NondeterministicFiniteAutomaton
         foreach (var allowedState in allowedStates) _finalStates.Add(allowedState.Substring(1));
     }
 
+    private NondeterministicFiniteAutomaton(Dictionary<string, Dictionary<string, List<string>>> states,
+        IEnumerable<string> finalStates, IEnumerable<string> alphabet, IEnumerable<string> currentStates)
+    {
+        _states = states;
+        _finalStates = finalStates.ToList();
+        _alphabet = alphabet.ToArray();
+        _currentStates = currentStates.ToHashSet();
+    }
+
     public static NondeterministicFiniteAutomaton FromRegularExpression(string regex)
     {
         var tokens = Tokenizer.GetPostfixTokens(regex);
+        var automatons = new Stack<NondeterministicFiniteAutomaton>();
+        var count = 0;
+
+        foreach (var token in tokens)
+        {
+            switch (token.Type)
+            {
+                case Tokenizer.Token.TokenType.Union:
+                    break;
+                case Tokenizer.Token.TokenType.Concatenation:
+                    if (token.Expression?.Length > 1)
+                    {
+                        var states = new Dictionary<string, Dictionary<string, List<string>>>();
+                        var currentStates = new HashSet<string>
+                        {
+                            count.ToString()
+                        };
+                        foreach (var symbol in token.Expression)
+                        {
+                            states[count.ToString()] = new Dictionary<string, List<string>>
+                            {
+                                [symbol.ToString()] = new() {count++.ToString()}
+                            };
+                        }
+
+                        var finalStates = new List<string>()
+                        {
+                            count.ToString()
+                        };
+                        automatons.Push(
+                            new NondeterministicFiniteAutomaton(
+                                states, finalStates, Array.Empty<string>(), currentStates
+                            )
+                        );
+                    }
+                    else
+                    {
+                        var states = new Dictionary<string, Dictionary<string, List<string>>>();
+                        var currentStates = new HashSet<string>
+                        {
+                            count.ToString()
+                        };
+                        states[count.ToString()] = new Dictionary<string, List<string>>
+                        {
+                            [token.Expression ?? throw new InvalidOperationException()] = new()
+                            {
+                                count++.ToString()
+                            }
+                        };
+
+                        var finalStates = new List<string>
+                        {
+                            count.ToString()
+                        };
+                        automatons.Push(
+                            new NondeterministicFiniteAutomaton(
+                                states, finalStates, Array.Empty<string>(), currentStates
+                            )
+                        );
+                    }
+
+                    break;
+                case Tokenizer.Token.TokenType.KleeneStar:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(regex));
+            }
+        }
 
         return new NondeterministicFiniteAutomaton("123");
     }
@@ -115,7 +196,7 @@ public class NondeterministicFiniteAutomaton
                 newStates.UnionWith(eStates);
             }
 
-
+            if (!newStates.Any()) continue;
             _currentStates = newStates;
         }
 
@@ -167,11 +248,14 @@ public class NondeterministicFiniteAutomaton
                     d[questionVertex][symbol].AddRange(eClosure);
                 }
 
-                if (!d[questionVertex][symbol].Any()) continue;
+                if (!d[questionVertex][symbol].Any())
+                {
+                    d[questionVertex].Remove(symbol);
+                    continue;
+                }
 
                 d[questionVertex][symbol] = d[questionVertex][symbol].Distinct().OrderBy(t => t).ToList();
-
-                // плохо
+                
                 if (used.Any(l => d[questionVertex][symbol].SequenceEqual(l))) continue;
 
                 consideredVertices.Enqueue(d[questionVertex][symbol]);
