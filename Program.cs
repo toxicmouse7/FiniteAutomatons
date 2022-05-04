@@ -1,16 +1,12 @@
 ﻿using FiniteAutomatons;
 
-var test = new NondeterministicFiniteAutomaton(@"/Users/aleksejgladkov/RiderProjects/FiniteAutomatons/test3.txt");
-var test2 = test.ToDetFinAut();
-Console.WriteLine(test.Accept("0000000001"));
-
 
 for (var i = 0; i < 1024; ++i)
 {
     var binaryInt = Convert.ToString(i, 2);
     var sequence = string.Concat(Enumerable.Repeat("0", 10 - binaryInt.Length)) + binaryInt;
     
-    var machine = new NondeterministicFiniteAutomaton(@"/Users/aleksejgladkov/RiderProjects/FiniteAutomatons/test3.txt");
+    var machine = new NondeterministicFiniteAutomaton(@"C:\Users\Aleksej\RiderProjects\FiniteAutomatons\test2.txt");
     var detMachine = machine.ToDetFinAut();
 
     var b1 = machine.Accept(sequence);

@@ -40,6 +40,7 @@ public class NondeterministicFiniteAutomaton
             {
                 continue;
             }
+
             var allowedTransitions = replaceCommaRegex.Replace(allowedTransitionsString, "];")
                 .Split(';');
             foreach (var transition in allowedTransitions)
@@ -191,9 +192,16 @@ public class NondeterministicFiniteAutomaton
                     newStates.Add(newState);
                 }
 
-                if (!_states[state].ContainsKey("e")) continue;
-                var eStates = e_BFS(state, false);
-                newStates.UnionWith(eStates);
+                if (newStates.All(newState => !_states[newState].ContainsKey("e"))) continue;
+                var eClose = newStates.Where(
+                    newState => _states[newState].ContainsKey("e")
+                ).ToArray();
+
+                foreach (var eState in eClose)
+                {
+                    var eStates = e_BFS(eState, false);
+                    newStates.UnionWith(eStates);
+                }
             }
 
             if (!newStates.Any()) continue;
@@ -255,7 +263,7 @@ public class NondeterministicFiniteAutomaton
                 }
 
                 d[questionVertex][symbol] = d[questionVertex][symbol].Distinct().OrderBy(t => t).ToList();
-                
+
                 if (used.Any(l => d[questionVertex][symbol].SequenceEqual(l))) continue;
 
                 consideredVertices.Enqueue(d[questionVertex][symbol]);
