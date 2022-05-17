@@ -7,7 +7,7 @@ public class NondeterministicFiniteAutomaton
     private readonly Dictionary<string, Dictionary<string, List<string>>> _states = new();
 
     private readonly List<string> _finalStates = new();
-    private readonly string[] _alphabet;
+    private string[] _alphabet;
     private HashSet<string> _currentStates = new();
 
     public NondeterministicFiniteAutomaton(string filename)
@@ -84,18 +84,43 @@ public class NondeterministicFiniteAutomaton
     {
         var tokens = Tokenizer.GetPostfixTokens(regex);
         var automatons = new Stack<NondeterministicFiniteAutomaton>();
+        var alphabet = new HashSet<string>();
         var count = 0;
 
         foreach (var token in tokens)
         {
             switch (token.Type)
             {
+                case Tokenizer.Token.TokenType.Constant:
+                {
+                    var currentStates = new HashSet<string> {count.ToString()};
+                    var states = new Dictionary<string, Dictionary<string, List<string>>>
+                    {
+                        [count++.ToString()] = new()
+                        {
+                            [token.Expression!] = new List<string>()
+                            {
+                                count.ToString()
+                            }
+                        }
+                    };
+
+
+                    var finalStates = new List<string> {count++.ToString()};
+
+                    automatons.Push(
+                        new NondeterministicFiniteAutomaton(
+                            states, finalStates, ArraySegment<string>.Empty, currentStates
+                        )
+                    );
+                    break;
+                }
                 case Tokenizer.Token.TokenType.Union:
                 {
                     var secondArgument = automatons.Pop();
                     var firstArgument = automatons.Pop();
 
-                    var currentStates = new HashSet<string>() {count.ToString()};
+                    var currentStates = new HashSet<string> {count.ToString()};
                     var states = new Dictionary<string, Dictionary<string, List<string>>>
                     {
                         [count.ToString()] = new()
@@ -141,20 +166,27 @@ public class NondeterministicFiniteAutomaton
                 }
                 case Tokenizer.Token.TokenType.Concatenation:
                 {
-                    var currentStates = new HashSet<string> {count.ToString()};
-                    var states = new Dictionary<string, Dictionary<string, List<string>>>();
-                    foreach (var symbol in token.Expression!.Select(character => character.ToString()))
+                    var argument = automatons.Pop();
+                    //var currentStates = new HashSet<string> {(--count).ToString()};
+                    --count;
+                    var states = new Dictionary<string, Dictionary<string, List<string>>>
                     {
-                        states[count.ToString()] = new Dictionary<string, List<string>>
+                        [count++.ToString()] = new()
                         {
-                            [symbol] = new()
+                            [token.Expression!] = new List<string>()
                             {
-                                (++count).ToString()
+                                count.ToString()
                             }
-                        };
-                    }
+                        }
+                    };
+
 
                     var finalStates = new List<string> {count++.ToString()};
+
+                    var currentStates = argument._currentStates;
+
+                    argument._states.ToList().ForEach(x => states.Add(x.Key, x.Value));
+
                     automatons.Push(
                         new NondeterministicFiniteAutomaton(
                             states, finalStates, ArraySegment<string>.Empty, currentStates
@@ -184,7 +216,7 @@ public class NondeterministicFiniteAutomaton
                             count.ToString()
                         }
                     };
-                    
+
                     argument._states.ToList().ForEach(x => states.Add(x.Key, x.Value));
 
                     var finalStates = new List<string> {count++.ToString()};
@@ -206,6 +238,15 @@ public class NondeterministicFiniteAutomaton
             }
         }
 
+        foreach (var symbol in automatons.Peek()._states.Keys
+                     .SelectMany(fromState => automatons.Peek()._states[fromState].Keys))
+        {
+            if (symbol == "e") continue;
+            alphabet.Add(symbol);
+        }
+
+        automatons.Peek()._alphabet = alphabet.ToArray();
+
         return automatons.Peek();
     }
 
@@ -219,7 +260,7 @@ public class NondeterministicFiniteAutomaton
         while (q.Any())
         {
             var v = q.Dequeue();
-            if (!_states[v].ContainsKey("e")) continue;
+            if (!_states.ContainsKey(v) || !_states[v].ContainsKey("e")) continue;
             foreach (var to in _states[v]["e"].Where(to => !used.Contains(to)))
             {
                 used.Add(to);
@@ -232,22 +273,27 @@ public class NondeterministicFiniteAutomaton
 
     public bool Accept(in string input)
     {
+        _currentStates = e_BFS(_currentStates.First()).ToHashSet();
+
         foreach (var symbol in input)
         {
             if (!_alphabet.Contains(symbol.ToString())) return false;
 
             var newStates = new HashSet<string>();
+
             foreach (var state in _currentStates
-                         .Where(state => _states[state].ContainsKey(symbol.ToString())))
+                         .Where(
+                             state => _states.ContainsKey(state) && _states[state].ContainsKey(symbol.ToString())
+                         )
+                    )
             {
                 foreach (var newState in _states[state][symbol.ToString()])
                 {
                     newStates.Add(newState);
                 }
 
-                if (newStates.All(newState => !_states[newState].ContainsKey("e"))) continue;
                 var eClose = newStates.Where(
-                    newState => _states[newState].ContainsKey("e")
+                    newState => _states.ContainsKey(newState) && _states[newState].ContainsKey("e")
                 ).ToArray();
 
                 foreach (var eState in eClose)
@@ -257,7 +303,7 @@ public class NondeterministicFiniteAutomaton
                 }
             }
 
-            if (!newStates.Any()) continue;
+            if (!newStates.Any()) return false;
             _currentStates = newStates;
         }
 

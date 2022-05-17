@@ -1,7 +1,7 @@
 ﻿using FiniteAutomatons;
 
 
-/*for (var i = 0; i < 1024; ++i)
+for (var i = 0; i < 1024; ++i)
 {
     var binaryInt = Convert.ToString(i, 2);
     var sequence = string.Concat(Enumerable.Repeat("0", 10 - binaryInt.Length)) + binaryInt;
@@ -22,6 +22,9 @@
     }
 }
 
-Console.WriteLine(true);*/
+Console.WriteLine(true);
 //((0+1*)+(11+010+0*))*
-NondeterministicFiniteAutomaton.FromRegularExpression("0+1*");
+
+// 0const 1const * + 1concat
+//var regAutomaton = NondeterministicFiniteAutomaton.FromRegularExpression("1*0");
+//Console.WriteLine(regAutomaton.Accept("10"));

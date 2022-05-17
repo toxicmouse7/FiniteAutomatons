@@ -71,6 +71,8 @@ public class DeterministicFiniteAutomaton
 
             if (_states[_currentState].ContainsKey(symbol.ToString()))
                 _currentState = _states[_currentState][symbol.ToString()];
+            else
+                return false;
         }
 
         return _finalStates.Contains(_currentState);

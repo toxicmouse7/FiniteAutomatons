@@ -1,4 +1,6 @@
-﻿namespace FiniteAutomatons;
+﻿using static FiniteAutomatons.Tokenizer.Token;
+
+namespace FiniteAutomatons;
 
 public static class Tokenizer
 {
@@ -12,10 +14,11 @@ public static class Tokenizer
             CloseBracket,
             Union,
             Concatenation,
-            KleeneStar
+            KleeneStar,
+            Constant
         }
 
-        public TokenType Type { get; set; }
+        public TokenType Type { get; init; }
         public string? Expression { get; init; }
     }
 
@@ -24,47 +27,53 @@ public static class Tokenizer
         List<Token> tokens = new();
         if (expr == null)
             return tokens;
-        var i = 0;
-        while (i < expr.Length)
+        foreach (var symbol in expr)
         {
-            var st = expr[i..].Select((x, j) => new {Val = x, Idx = j})
-                .Where(x => OperatorsString.Contains(x.Val))
-                .Select(x => x.Idx)
-                .DefaultIfEmpty(-1)
-                .First();
-            
-            if (st == -1)
+            var type = symbol switch
             {
-                tokens.Add(new Token()
+                '(' => TokenType.OpenBracket,
+                ')' => TokenType.CloseBracket,
+                '*' => TokenType.KleeneStar,
+                '+' => TokenType.Union,
+                '|' => TokenType.Union,
+                _ => TokenType.Constant
+            };
+
+            char? expression = type switch
+            {
+                TokenType.Constant => symbol,
+                _ => null
+            };
+
+            if (expression != null)
+            {
+                if (tokens.Any())
                 {
-                    Type = Token.TokenType.Concatenation,
-                    Expression = expr[i..]
-                });
-                break;
+                    switch (tokens.Last().Type)
+                    {
+                        case TokenType.CloseBracket:
+                        case TokenType.KleeneStar:
+                        case TokenType.Constant:
+                        case TokenType.Concatenation:
+                            type = TokenType.Concatenation;
+                            break;
+                        case TokenType.OpenBracket:
+                            break;
+                        case TokenType.Union:
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(expr));
+                    }
+                }
             }
 
-            if (st == 0) ++st;
-
-            tokens.Add(new Token()
-            {
-                Type = Token.TokenType.Concatenation,
-                Expression = expr.Substring(i, st)
-            });
-
-            i += st;
-        }
-
-        foreach (var token in tokens)
-        {
-            token.Type = token.Expression switch
-            {
-                "(" => Token.TokenType.OpenBracket,
-                ")" => Token.TokenType.CloseBracket,
-                "*" => Token.TokenType.KleeneStar,
-                "+" => Token.TokenType.Union,
-                "|" => Token.TokenType.Union,
-                _ => token.Type
-            };
+            tokens.Add(
+                new Token()
+                {
+                    Type = type,
+                    Expression = expression.ToString()
+                }
+            );
         }
 
         return tokens;
@@ -79,29 +88,30 @@ public static class Tokenizer
         {
             switch (token.Type)
             {
-                case Token.TokenType.OpenBracket:
+                case TokenType.OpenBracket:
                     operations.Push(token);
                     break;
-                case Token.TokenType.CloseBracket:
-                    while (operations.Peek().Type != Token.TokenType.OpenBracket)
+                case TokenType.CloseBracket:
+                    while (operations.Peek().Type != TokenType.OpenBracket)
                     {
                         result.Add(operations.Pop());
                     }
 
                     operations.Pop();
                     break;
-                case Token.TokenType.Concatenation:
+                case TokenType.Constant:
+                case TokenType.Concatenation:
                     result.Add(token);
                     break;
-                case Token.TokenType.Union:
-                    while (operations.Any() && operations.Peek().Type == Token.TokenType.Union)
+                case TokenType.Union:
+                    while (operations.Any() && operations.Peek().Type == TokenType.Union)
                     {
                         result.Add(operations.Pop());
                     }
 
                     operations.Push(token);
                     break;
-                case Token.TokenType.KleeneStar:
+                case TokenType.KleeneStar:
                     result.Add(token);
                     break;
                 default:
