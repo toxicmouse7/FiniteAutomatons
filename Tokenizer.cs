@@ -18,7 +18,7 @@ public static class Tokenizer
             Constant
         }
 
-        public TokenType Type { get; init; }
+        public TokenType Type { get; set; }
         public string? Expression { get; init; }
     }
 
@@ -45,14 +45,19 @@ public static class Tokenizer
                 _ => null
             };
 
+            if (type == TokenType.KleeneStar && tokens.Last().Type == TokenType.Concatenation)
+            {
+                tokens.Last().Type = TokenType.Constant;
+            }
+
             if (expression != null)
             {
                 if (tokens.Any())
                 {
                     switch (tokens.Last().Type)
                     {
-                        case TokenType.CloseBracket:
                         case TokenType.KleeneStar:
+                        case TokenType.CloseBracket:
                         case TokenType.Constant:
                         case TokenType.Concatenation:
                             type = TokenType.Concatenation;
