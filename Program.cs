@@ -26,5 +26,7 @@
 //((0+1*)+(11+010+0*))*
 
 // 0const 1const * + 1concat
-var regAutomaton = NondeterministicFiniteAutomaton.FromRegularExpression("(0+11*00)*1*");
-Console.WriteLine(regAutomaton.Accept("01100101001"));
+//var regAutomaton = NondeterministicFiniteAutomaton.FromRegularExpression("(0+11*00)*1*");
+var regAutomaton = NondeterministicFiniteAutomaton.FromRegularExpression("11*");
+//var dfa = regAutomaton.ToDetFinAut();
+Console.WriteLine(regAutomaton.Accept("0110011001"));
