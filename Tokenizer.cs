@@ -24,6 +24,7 @@ public static class Tokenizer
 
     private static IEnumerable<Token> GetTokensFromString(string? expr)
     {
+        // надо сделать операцию конкатенации отдельной
         List<Token> tokens = new();
         if (expr == null)
             return tokens;

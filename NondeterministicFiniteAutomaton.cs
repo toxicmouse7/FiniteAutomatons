@@ -177,16 +177,25 @@ public class NondeterministicFiniteAutomaton
         NondeterministicFiniteAutomaton arg2)
     {
         var states = arg1._states;
+        
+        foreach (var state in states.Keys)
+        {
+            foreach (var symbol in states[state].Keys
+                         .Where(symbol => states[state][symbol].First() == arg1._finalStates.First()))
+            {
+                states[state][symbol] = arg2._currentStates.ToList();
+            }
+        }
 
         arg2._states.ToList().ForEach(x => states.Add(x.Key, x.Value));
 
-        foreach (var finalState in arg1._finalStates)
-        {
-            states[finalState] = new Dictionary<string, List<string>>
-            {
-                ["e"] = arg2._currentStates.ToList()
-            };
-        }
+        // foreach (var finalState in arg1._finalStates)
+        // {
+        //     states[finalState] = new Dictionary<string, List<string>>
+        //     {
+        //         ["e"] = arg2._currentStates.ToList()
+        //     };
+        // }
 
         var currentStates = arg1._currentStates;
         var finalStates = arg2._finalStates;
@@ -265,7 +274,7 @@ public class NondeterministicFiniteAutomaton
                 case Tokenizer.Token.TokenType.KleeneStar:
                 {
                     var argument = automatons.Pop();
-                    
+
                     if (used.Peek().Type == Tokenizer.Token.TokenType.Constant)
                     {
                         used.Pop();
