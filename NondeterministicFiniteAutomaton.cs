@@ -145,34 +145,7 @@ public class NondeterministicFiniteAutomaton
             states, finalStates, ArraySegment<string>.Empty, currentStates
         );
     }
-
-    private static NondeterministicFiniteAutomaton Concatenation(Tokenizer.Token token,
-        NondeterministicFiniteAutomaton argument, ref int count)
-    {
-        --count;
-
-        var states = new Dictionary<string, Dictionary<string, List<string>>>
-        {
-            [count++.ToString()] = new()
-            {
-                [token.Expression!] = new List<string>()
-                {
-                    count.ToString()
-                }
-            }
-        };
-
-        var finalStates = new List<string> {count++.ToString()};
-
-        var currentStates = argument._currentStates;
-
-        argument._states.ToList().ForEach(x => states.Add(x.Key, x.Value));
-
-        return new NondeterministicFiniteAutomaton(
-            states, finalStates, ArraySegment<string>.Empty, currentStates
-        );
-    }
-
+    
     private static NondeterministicFiniteAutomaton Concatenation(NondeterministicFiniteAutomaton arg1,
         NondeterministicFiniteAutomaton arg2)
     {
@@ -189,13 +162,13 @@ public class NondeterministicFiniteAutomaton
 
         arg2._states.ToList().ForEach(x => states.Add(x.Key, x.Value));
 
-        // foreach (var finalState in arg1._finalStates)
-        // {
-        //     states[finalState] = new Dictionary<string, List<string>>
-        //     {
-        //         ["e"] = arg2._currentStates.ToList()
-        //     };
-        // }
+        foreach (var finalState in arg1._finalStates)
+        {
+            states[finalState] = new Dictionary<string, List<string>>
+            {
+                ["e"] = arg2._currentStates.ToList()
+            };
+        }
 
         var currentStates = arg1._currentStates;
         var finalStates = arg2._finalStates;
@@ -243,8 +216,6 @@ public class NondeterministicFiniteAutomaton
         var alphabet = new HashSet<string>();
         var count = 0;
 
-        var used = new Stack<Tokenizer.Token>();
-
         foreach (var token in tokens)
         {
             switch (token.Type)
@@ -265,9 +236,10 @@ public class NondeterministicFiniteAutomaton
                 }
                 case Tokenizer.Token.TokenType.Concatenation:
                 {
-                    var argument = automatons.Pop();
+                    var arg2 = automatons.Pop();
+                    var arg1 = automatons.Pop();
 
-                    automatons.Push(Concatenation(token, argument, ref count));
+                    automatons.Push(Concatenation(arg1, arg2));
 
                     break;
                 }
@@ -275,21 +247,7 @@ public class NondeterministicFiniteAutomaton
                 {
                     var argument = automatons.Pop();
 
-                    if (used.Peek().Type == Tokenizer.Token.TokenType.Constant)
-                    {
-                        used.Pop();
-                    }
-
                     automatons.Push(KleeneStart(argument, ref count));
-
-                    if (used.Any() && used.Peek().Type is Tokenizer.Token.TokenType.Constant
-                            or Tokenizer.Token.TokenType.Concatenation)
-                    {
-                        var arg2 = automatons.Pop();
-                        var arg1 = automatons.Pop();
-
-                        automatons.Push(Concatenation(arg1, arg2));
-                    }
 
                     break;
                 }
@@ -299,8 +257,6 @@ public class NondeterministicFiniteAutomaton
                 default:
                     throw new ArgumentOutOfRangeException(nameof(regex));
             }
-
-            used.Push(token);
         }
 
         foreach (var symbol in automatons.Peek()._states.Keys

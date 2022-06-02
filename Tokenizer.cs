@@ -6,6 +6,12 @@ public static class Tokenizer
 {
     private const string OperatorsString = "()+*|";
 
+    private static Dictionary<TokenType, int> _priority = new()
+    {
+        {TokenType.Concatenation, 1},
+        {TokenType.Union, 0}
+    };
+
     public class Token
     {
         public enum TokenType
@@ -46,32 +52,18 @@ public static class Tokenizer
                 _ => null
             };
 
-            if (type == TokenType.KleeneStar && tokens.Last().Type == TokenType.Concatenation)
+            if (tokens.LastOrDefault()?.Type is TokenType.Constant or TokenType.KleeneStar 
+                && type == TokenType.Constant)
             {
-                tokens.Last().Type = TokenType.Constant;
+                tokens.Add(
+                    new Token
+                    {
+                        Type = TokenType.Concatenation,
+                        Expression = null
+                    }
+                );
             }
 
-            if (expression != null)
-            {
-                if (tokens.Any())
-                {
-                    switch (tokens.Last().Type)
-                    {
-                        case TokenType.KleeneStar:
-                        case TokenType.CloseBracket:
-                        case TokenType.Constant:
-                        case TokenType.Concatenation:
-                            type = TokenType.Concatenation;
-                            break;
-                        case TokenType.OpenBracket:
-                            break;
-                        case TokenType.Union:
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException(nameof(expr));
-                    }
-                }
-            }
 
             tokens.Add(
                 new Token()
@@ -105,17 +97,19 @@ public static class Tokenizer
 
                     operations.Pop();
                     break;
-                case TokenType.Constant:
-                case TokenType.Concatenation:
-                    result.Add(token);
-                    break;
                 case TokenType.Union:
-                    while (operations.Any() && operations.Peek().Type == TokenType.Union)
+                case TokenType.Concatenation:
+                    while (operations.Any() 
+                           && operations.Peek().Type is TokenType.Concatenation or TokenType.Union
+                           && _priority[operations.Peek().Type] >= _priority[token.Type])
                     {
                         result.Add(operations.Pop());
                     }
 
                     operations.Push(token);
+                    break;
+                case TokenType.Constant:
+                    result.Add(token);
                     break;
                 case TokenType.KleeneStar:
                     result.Add(token);
