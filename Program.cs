@@ -1,6 +1,5 @@
 ﻿using FiniteAutomatons;
 
-
 // for (var i = 0; i < 1024; ++i)
 // {
 //     var binaryInt = Convert.ToString(i, 2);
@@ -25,10 +24,11 @@
 // Console.WriteLine(true);
 //((0+1*)+(11+010+0*))*
 
-// 0const 1const * + 1concat
+//0const 1const * + 1concat
 //var regAutomaton = NondeterministicFiniteAutomaton.FromRegularExpression("0+1*0");
 var regAutomaton = NondeterministicFiniteAutomaton.FromRegularExpression("(0+11*00)*1*");
 var detAutomaton = regAutomaton.ToDetFinAut();
+detAutomaton.Minimize();
 //var regAutomaton = NondeterministicFiniteAutomaton.FromRegularExpression("11*");
 //var dfa = regAutomaton.ToDetFinAut();
 //Console.WriteLine(regAutomaton.Accept("11111111110"));

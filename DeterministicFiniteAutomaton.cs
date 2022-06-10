@@ -4,7 +4,7 @@ namespace FiniteAutomatons;
 
 public class DeterministicFiniteAutomaton
 {
-    private readonly Dictionary<string, Dictionary<string, string>> _states = new();
+    private Dictionary<string, Dictionary<string, string>> _states = new();
 
     private readonly string[] _alphabet;
     private readonly List<string> _finalStates = new();
@@ -76,5 +76,150 @@ public class DeterministicFiniteAutomaton
         }
 
         return _finalStates.Contains(_currentState);
+    }
+    
+    private void MoveStates(Dictionary<string, List<string>> components)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>();
+        var newStatesList = components.Keys.ToList();
+
+        foreach (var (key, _) in components)
+        {
+            result[key] = new Dictionary<string, string>();
+            foreach (var (transitionKey, transitionValue) in _states[key])
+            {
+                var state = transitionValue;
+                if (newStatesList.Contains(state) == false)
+                {
+                    foreach (var (s, _) in components.Where(i => i.Value.Contains(state)))
+                    {
+                        state = s;
+                    }
+                }
+                
+                if (newStatesList.Contains(state))
+                {
+                    result[key].Add(transitionKey, state);
+                }
+                else
+                {
+                    if (components.Any(i => i.Value.Contains(state)))
+                    {
+                        result[key].Add(transitionKey, state);
+                    }
+                }
+            }
+        }
+
+        _states = result;
+    }
+    
+    private Dictionary<(string, string), List<string>> GetListReversEdges()
+    {
+        var statesList = _states.Keys.ToList();
+        var reversEdges = new Dictionary<(string, string), List<string>>();
+        foreach (var state in statesList)
+        {
+            foreach (var letter in _alphabet)
+            {
+                var tmp = new List<string>();
+                reversEdges.Add((state, letter), tmp);
+            }
+        }
+
+        foreach (var (reversState, value) in _states)
+        {
+            foreach (var (transitionKey, transitionValue) in value)
+            {
+                var letter = transitionKey;
+                reversEdges[(transitionValue, letter)].Add(reversState);
+            }
+        }
+
+        return reversEdges;
+    }
+    
+    private bool[][] BuildTable()
+    {
+        var n = _states.Count;
+        var statesList = _states.Keys.ToList();
+        var reversEdges = GetListReversEdges();
+
+        var q = new Queue<(int, int)>();
+
+
+        var marked = new bool[n][];
+        for (var i = 0; i < n; i++)
+        {
+            marked[i] = new bool[n];
+            for (var j = 0; j < n; j++)
+                marked[i][j] = false;
+        }
+
+        for (var i = 0; i < n; i++)
+        {
+            for (var j = 0; j < n; j++)
+            {
+                if (marked[i][j] ||
+                    _finalStates.Contains(statesList[i]) == _finalStates.Contains(statesList[j])) continue;
+                marked[i][j] = true;
+                marked[j][i] = true;
+                q.Enqueue((i, j));
+            }
+        }
+
+        while (q.Count > 0)
+        {
+            var (u, v) = q.Dequeue();
+            foreach (var c in _alphabet)
+            {
+                foreach (var r in reversEdges[(statesList[u], c)])
+                {
+                    foreach (var s in reversEdges[(statesList[v], c)])
+                    {
+                        var indexR = statesList.IndexOf(r);
+                        var indexS = statesList.IndexOf(s);
+                        if (marked[indexR][indexS]) continue;
+                        
+                        marked[indexR][indexS] = true;
+                        marked[indexS][indexR] = true;
+                        q.Enqueue((indexR, indexS));
+                    }
+                }
+            }
+        }
+
+        return marked;
+    }
+    
+    public void Minimize()
+    {
+        var n = _states.Count;
+        var statesList = _states.Keys.ToList();
+        var marked = BuildTable();
+        
+        var components = new Dictionary<string, List<string>>();
+
+        var k = 0;
+        while (k < marked.Length)
+        {
+            if (marked[k].Length == 1)
+            {
+                k++;
+                continue;
+            }
+
+            components[statesList[k]] = new List<string>();
+            for (var i = k + 1; i < n; i++)
+            {
+                if (!marked[i].ToList().SequenceEqual(marked[k].ToList())) continue;
+                marked[i] = new bool[1];
+                components[statesList[k]].Add(statesList[i]);
+            }
+
+            k++;
+        }
+
+        MoveStates(components);
     }
 }
