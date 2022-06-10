@@ -6,7 +6,7 @@ public class NondeterministicFiniteAutomaton
 {
     private readonly Dictionary<string, Dictionary<string, List<string>>> _states = new();
 
-    private readonly List<string> _finalStates = new();
+    private List<string> _finalStates = new();
     private string[] _alphabet;
     private HashSet<string> _currentStates = new();
 
@@ -268,6 +268,8 @@ public class NondeterministicFiniteAutomaton
 
         automatons.Peek()._alphabet = alphabet.ToArray();
 
+        automatons.Peek()._states[automatons.Peek()._finalStates.First()] = new Dictionary<string, List<string>>();
+
         return automatons.Peek();
     }
 
@@ -331,76 +333,73 @@ public class NondeterministicFiniteAutomaton
         return _currentStates.Any(s => _finalStates.Contains(s));
     }
 
-    public DeterministicFiniteAutomaton ToDetFinAut()
+    private static int GetIndexOf<T>(IReadOnlyList<HashSet<T>> collection,
+        IReadOnlyCollection<T> item)
     {
-        var consideredVertices = new Queue<List<string>>();
-        var used = new HashSet<List<string>>();
-        var d = new Dictionary<string, Dictionary<string, List<string>>>();
-        var newStates = new Dictionary<string, Dictionary<string, string>>();
-        var newFinalStates = new List<string>();
-
-        var startVertices = e_BFS(_currentStates.First()).ToList();
-        consideredVertices.Enqueue(startVertices);
-        used.Add(startVertices);
-
-        var newInitialState = string.Join(" ", consideredVertices.First());
-
-        while (consideredVertices.Any())
+        for (var i = 0; i < collection.Count; ++i)
         {
-            var q = consideredVertices.Dequeue();
-            if (q.Any(s => _finalStates.Contains(s)))
-            {
-                newFinalStates.Add(string.Join(" ", q));
-            }
+            if (collection[i].SequenceEqual(item))
+                return i;
+        }
 
-            var questionVertex = string.Join(" ", q);
+        return -1;
+    }
 
+    public DeterministicFiniteAutomaton ToDetFinAutV2()
+    {
+        var queue = new Queue<HashSet<string>>();
+        var start = e_BFS(_currentStates.First());
+        queue.Enqueue(start.ToHashSet());
+        var dStates = new List<HashSet<string>>();
+        var dTransitions = new Dictionary<string, Dictionary<string, string>>();
+        var dFinish = new List<string>();
+        dStates.Add(queue.Peek());
+        while (queue.Any())
+        {
+            var newState = queue.Dequeue();
             foreach (var symbol in _alphabet)
             {
-                if (!d.ContainsKey(questionVertex))
-                    d[questionVertex] = new Dictionary<string, List<string>>();
-                if (!d[questionVertex].ContainsKey(symbol))
-                    d[questionVertex][symbol] = new List<string>();
-
-
-                foreach (var state in q.Where(state =>
-                             _states.ContainsKey(state) && _states[state].ContainsKey(symbol)))
+                var newStateTarget = new HashSet<string>();
+                foreach (var state in newState)
                 {
-                    d[questionVertex][symbol].AddRange(_states[state][symbol]);
-                    var eClosure = new HashSet<string>();
-                    foreach (var eState in _states[state][symbol]
-                                 .Where(eState => _states[eState].ContainsKey("e")))
-                    {
-                        eClosure.UnionWith(e_BFS(eState));
-                    }
-
-                    d[questionVertex][symbol].AddRange(eClosure);
+                    if (_states[state].ContainsKey(symbol))
+                        newStateTarget.UnionWith(_states[state][symbol]);
                 }
 
-                if (!d[questionVertex][symbol].Any())
+                var targetEClose = new HashSet<string>();
+
+                foreach (var state in newStateTarget)
+                    targetEClose.UnionWith(e_BFS(state, false));
+                newStateTarget.UnionWith(targetEClose);
+                
+                if (newStateTarget.Contains(""))
+                    newStateTarget.Remove("");
+
+                if (dStates.All(x => !x.SequenceEqual(newStateTarget)))
                 {
-                    d[questionVertex].Remove(symbol);
-                    continue;
+                    queue.Enqueue(newStateTarget);
+                    dStates.Add(newStateTarget);
                 }
+                
+                var newStateName = "Q" + dStates.IndexOf(newState);
+                if (!dTransitions.ContainsKey(newStateName))
+                    dTransitions[newStateName] = new Dictionary<string, string>();
 
-                d[questionVertex][symbol] = d[questionVertex][symbol].Distinct().OrderBy(t => t).ToList();
-
-                if (used.Any(l => d[questionVertex][symbol].SequenceEqual(l))) continue;
-
-                consideredVertices.Enqueue(d[questionVertex][symbol]);
-                used.Add(d[questionVertex][symbol]);
+                var indexOf1 = "Q" + GetIndexOf(dStates, newStateTarget);
+                dTransitions["Q" + GetIndexOf(dStates, newState)][symbol] = indexOf1;
             }
-        }
 
-        foreach (var (fromState, transition) in d)
-        {
-            newStates[fromState] = new Dictionary<string, string>();
-            foreach (var (symbol, toStates) in transition)
+
+            foreach (var fState in _finalStates)
             {
-                newStates[fromState][symbol] = string.Join(" ", toStates);
+                if (newState.Contains(fState))
+                {
+                    dFinish.Add("Q" + dStates.IndexOf(newState));
+                    break;
+                }
             }
         }
 
-        return new DeterministicFiniteAutomaton(newStates, _alphabet, newFinalStates, newInitialState);
+        return new DeterministicFiniteAutomaton(dTransitions, _alphabet, dFinish, "Q0");
     }
 }

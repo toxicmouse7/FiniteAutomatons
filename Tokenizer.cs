@@ -52,8 +52,9 @@ public static class Tokenizer
                 _ => null
             };
 
-            if (tokens.LastOrDefault()?.Type is TokenType.Constant or TokenType.KleeneStar 
-                && type == TokenType.Constant)
+            if (tokens.LastOrDefault()?.Type is TokenType.Constant or TokenType.KleeneStar
+                && type is TokenType.Constant or TokenType.OpenBracket
+                || (tokens.LastOrDefault()?.Type == TokenType.CloseBracket && type == TokenType.OpenBracket))
             {
                 tokens.Add(
                     new Token

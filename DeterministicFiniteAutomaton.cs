@@ -63,6 +63,11 @@ public class DeterministicFiniteAutomaton
         foreach (var allowedState in allowedStates) _finalStates.Add(allowedState.Substring(1));
     }
 
+    private DeterministicFiniteAutomaton(int[] components)
+    {
+        
+    }
+
     public bool Accept(in string input)
     {
         foreach (var symbol in input)
@@ -71,8 +76,6 @@ public class DeterministicFiniteAutomaton
 
             if (_states[_currentState].ContainsKey(symbol.ToString()))
                 _currentState = _states[_currentState][symbol.ToString()];
-            else
-                return false;
         }
 
         return _finalStates.Contains(_currentState);
@@ -89,7 +92,7 @@ public class DeterministicFiniteAutomaton
             foreach (var (transitionKey, transitionValue) in _states[key])
             {
                 var state = transitionValue;
-                if (newStatesList.Contains(state) == false)
+                if (!newStatesList.Contains(state))
                 {
                     foreach (var (s, _) in components.Where(i => i.Value.Contains(state)))
                     {
@@ -122,8 +125,7 @@ public class DeterministicFiniteAutomaton
         {
             foreach (var letter in _alphabet)
             {
-                var tmp = new List<string>();
-                reversEdges.Add((state, letter), tmp);
+                reversEdges.Add((state, letter), new List<string>());
             }
         }
 
@@ -141,7 +143,7 @@ public class DeterministicFiniteAutomaton
     
     private bool[][] BuildTable()
     {
-        var n = _states.Count;
+        var n = _states.Keys.Count;
         var statesList = _states.Keys.ToList();
         var reversEdges = GetListReversEdges();
 
@@ -160,15 +162,16 @@ public class DeterministicFiniteAutomaton
         {
             for (var j = 0; j < n; j++)
             {
-                if (marked[i][j] ||
-                    _finalStates.Contains(statesList[i]) == _finalStates.Contains(statesList[j])) continue;
-                marked[i][j] = true;
-                marked[j][i] = true;
-                q.Enqueue((i, j));
+                if (!marked[i][j] && _finalStates.Contains(statesList[i]) != _finalStates.Contains(statesList[j]))
+                {
+                    marked[i][j] = true;
+                    marked[j][i] = true;
+                    q.Enqueue((i, j));
+                }
             }
         }
 
-        while (q.Count > 0)
+        while (q.Any())
         {
             var (u, v) = q.Dequeue();
             foreach (var c in _alphabet)
@@ -190,6 +193,33 @@ public class DeterministicFiniteAutomaton
         }
 
         return marked;
+    }
+
+    private bool[] GetReachable()
+    {
+        var statesList = _states.Keys.ToList();
+        var reachable = new bool[statesList.Count];
+        var queue = new Queue<string>();
+        queue.Enqueue(_currentState);
+
+        if (_currentState == "")
+        {
+            return reachable;
+        }
+
+        while (queue.Any())
+        {
+            var vertex = queue.Dequeue();
+            foreach (var (letter, neighbour) in _states[vertex])
+            {
+                var nInd = statesList.IndexOf(neighbour);
+                if (reachable[nInd]) continue;
+                reachable[nInd] = true;
+                queue.Enqueue(neighbour);
+            }
+        }
+
+        return reachable;
     }
     
     public void Minimize()
@@ -221,5 +251,42 @@ public class DeterministicFiniteAutomaton
         }
 
         MoveStates(components);
+    }
+
+    public void MinimizeV2()
+    {
+        var n = _states.Keys.Count;
+        var marked = BuildTable(); // check
+        var reachable = GetReachable();
+        var components = new int[n];
+        for (var i = 0; i < n; ++i) components[i] = -1;
+
+
+        for (var i = 0; i < n; ++i)
+        {
+            if (!marked[0][i])
+            {
+                components[i] = 0;
+            }
+        }
+
+        var componentsCount = 0;
+        for (var i = 0; i < n; ++i)
+        {
+            if (!reachable[i]) continue;
+            if (components[i] != -1) continue;
+            
+            componentsCount += 1;
+            components[i] = componentsCount;
+
+            for (var j = i + 1; j < n; ++j)
+            {
+                if (!marked[i][j])
+                {
+                    components[j] = componentsCount;
+                }
+            }
+            
+        }
     }
 }
